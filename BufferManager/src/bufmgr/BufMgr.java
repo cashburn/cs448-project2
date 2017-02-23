@@ -1,12 +1,20 @@
 package bufmgr;
 
+import java.util.HashMap; //TODO: Remove and implement
+
+//import diskmgr.DiskMgr;
+import diskmgr.*;
 import global.Page;
 import global.PageId;
 import chainexception.ChainException;
 public class BufMgr {
 
 	private Page[] frames;
-	
+	private HashMap<PageId, Integer> pageFrame;
+	private String policy;
+	private int numFilled;
+	private int pinnedPages;
+	private DiskMgr disk;
 
 	/**
 	* Create the BufMgr object.
@@ -19,7 +27,12 @@ public class BufMgr {
 	* @param replacementPolicy Name of the replacement policy, that parameter will be set to "MRU" (you can safely ignore this parameter as you will implement only one policy)
 	*/
 	public BufMgr(int numbufs, int lookAheadSize, String replacementPolicy) {
-
+		this.frames = new Page[numbufs];
+		disk = new DiskMgr();
+		this.policy = "MRU";
+		pageFrame = new HashMap<PageId, Integer>();
+		pinnedPages = 0;
+		numFilled = 0;
 	}
 
 	/**
@@ -77,7 +90,7 @@ public class BufMgr {
 	*
 	* @return the first page id of the new pages.__ null, if error.
 	*/
-	public PageId newPage(Page firstpage, int howmany) {
+	public PageId newPage(Page firstPage, int howmany) {
 		return new PageId();
 	}
 	public void freePage(PageId globalPageId) throws ChainException {}
@@ -87,13 +100,21 @@ public class BufMgr {
 	*
 	* @param pageid the page number in the database.
 	*/
-	public void flushPage(PageId pageid) {}
+	public void flushPage(PageId pageid) {
+		int f = pageFrame.get(pageid);
+		try {
+			disk.write_page(pageid, frames[f]);
+		} catch (Exception e) {
+			System.err.println(e);
+		}
+
+
+	}
 	/**
 	* Used to flush all dirty pages in the buffer pool to disk
 	*
 	*/
-	public
-	void flushAllPages() {}
+	public void flushAllPages() {}
 	/**
 	* Returns the total number of buffer frames.
 	*/
