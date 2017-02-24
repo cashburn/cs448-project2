@@ -1,14 +1,28 @@
 package heap;
 
-import java.util.*;
 import global.* ;
 import chainexception.ChainException;
 public class Tuple{
-	public Tuple(){}
+	
+	/*FIXME this shouldn't be an arbitrary number*/
+	public static final int max = 1000000;
 
-	public Tuple(byte[] data, int offset, int length){}
+	private byte[] tupleArray;
+	private int tupleLength;
 
-	public int getLength(){return -1;}
+	//initialize a blank tuple
+	public Tuple(){
+		tupleArray = new byte[max];
+		tupleLength = max;
+	}
 
-	public byte[] getTupleByteArray(){return null;}
+	//init a tuple with fields
+	public Tuple(byte[] data, int offset, int length){
+		tupleArray = data;
+		tupleLength = length;
+	}
+
+	public int getLength(){return tupleLength;}
+
+	public byte[] getTupleByteArray(){return tupleArray;}
 }
