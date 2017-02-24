@@ -9,12 +9,13 @@ import global.PageId;
 import chainexception.ChainException;
 public class BufMgr {
 
-	private Page[] frames;
-	private HashMap<PageId, Integer> pageFrame;
-	private String policy;
-	private int numFilled;
-	private int pinnedPages;
-	private DiskMgr disk;
+	public Page[] frames;
+	public HashMap<PageId, Integer> pageFrame;
+	public String policy;
+	public int numFilled;
+	public int pinnedPages;
+	public DiskMgr disk;
+	public BufferDescription[] descriptions;
 
 	/**
 	* Create the BufMgr object.
@@ -27,9 +28,10 @@ public class BufMgr {
 	* @param replacementPolicy Name of the replacement policy, that parameter will be set to "MRU" (you can safely ignore this parameter as you will implement only one policy)
 	*/
 	public BufMgr(int numbufs, int lookAheadSize, String replacementPolicy) {
-		this.frames = new Page[numbufs];
+		frames = new Page[numbufs];
 		disk = new DiskMgr();
-		this.policy = "MRU";
+		descriptions = new BufferDescription[numbufs];
+		policy = "MRU";
 		pageFrame = new HashMap<PageId, Integer>();
 		pinnedPages = 0;
 		numFilled = 0;
@@ -54,7 +56,15 @@ public class BufMgr {
 	* @param emptyPage true (empty page); false (non-empty page)
 	*/
 	public void pinPage(PageId pageno, Page page, boolean emptyPage)  throws ChainException {
-		//throw new DiskMgrException(new Exception("Hello"), "Test");
+		if (emptyPage)
+			return;
+		Integer frame = pageFrame.get(pageno);
+		if (frame != null) {
+			//if (descriptions[frame].pinCount == 0)
+				//remove from candidates
+			descriptions[frame].pinCount++;
+			page.setpage(frames[frame].getpage());
+		}
 	}
 
 	/**
@@ -114,7 +124,13 @@ public class BufMgr {
 	* Used to flush all dirty pages in the buffer pool to disk
 	*
 	*/
-	public void flushAllPages() {}
+	public void flushAllPages() {
+		int len = descriptions.length;
+		for (int i = 0; i < len; i++) {
+			if (descriptions[i].isDirty)
+				flushPage(new PageId(i));
+		}
+	}
 	/**
 	* Returns the total number of buffer frames.
 	*/
