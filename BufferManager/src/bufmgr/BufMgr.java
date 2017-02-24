@@ -1,12 +1,21 @@
 package bufmgr;
 
+import java.util.HashMap; //TODO: Remove and implement
+
+//import diskmgr.DiskMgr;
+import diskmgr.*;
 import global.Page;
 import global.PageId;
 import chainexception.ChainException;
 public class BufMgr {
 
-	private Page[] frames;
-	
+	public Page[] frames;
+	public HashMap<PageId, Integer> pageFrame;
+	public String policy;
+	public int numFilled;
+	public int pinnedPages;
+	public DiskMgr disk;
+	public BufferDescription[] descriptions;
 
 	/**
 	* Create the BufMgr object.
@@ -19,7 +28,13 @@ public class BufMgr {
 	* @param replacementPolicy Name of the replacement policy, that parameter will be set to "MRU" (you can safely ignore this parameter as you will implement only one policy)
 	*/
 	public BufMgr(int numbufs, int lookAheadSize, String replacementPolicy) {
-
+		frames = new Page[numbufs];
+		disk = new DiskMgr();
+		descriptions = new BufferDescription[numbufs];
+		policy = "MRU";
+		pageFrame = new HashMap<PageId, Integer>();
+		pinnedPages = 0;
+		numFilled = 0;
 	}
 
 	/**
@@ -41,7 +56,15 @@ public class BufMgr {
 	* @param emptyPage true (empty page); false (non-empty page)
 	*/
 	public void pinPage(PageId pageno, Page page, boolean emptyPage)  throws ChainException {
-		//throw new DiskMgrException(new Exception("Hello"), "Test");
+		if (emptyPage)
+			return;
+		Integer frame = pageFrame.get(pageno);
+		if (frame != null) {
+			//if (descriptions[frame].pinCount == 0)
+				//remove from candidates
+			descriptions[frame].pinCount++;
+			page.setpage(frames[frame].getpage());
+		}
 	}
 
 	/**
@@ -77,7 +100,7 @@ public class BufMgr {
 	*
 	* @return the first page id of the new pages.__ null, if error.
 	*/
-	public PageId newPage(Page firstpage, int howmany) {
+	public PageId newPage(Page firstPage, int howmany) {
 		return new PageId();
 	}
 	public void freePage(PageId globalPageId) throws ChainException {}
@@ -87,13 +110,27 @@ public class BufMgr {
 	*
 	* @param pageid the page number in the database.
 	*/
-	public void flushPage(PageId pageid) {}
+	public void flushPage(PageId pageid) {
+		int f = pageFrame.get(pageid);
+		try {
+			disk.write_page(pageid, frames[f]);
+		} catch (Exception e) {
+			System.err.println(e);
+		}
+
+
+	}
 	/**
 	* Used to flush all dirty pages in the buffer pool to disk
 	*
 	*/
-	public
-	void flushAllPages() {}
+	public void flushAllPages() {
+		int len = descriptions.length;
+		for (int i = 0; i < len; i++) {
+			if (descriptions[i].isDirty)
+				flushPage(new PageId(i));
+		}
+	}
 	/**
 	* Returns the total number of buffer frames.
 	*/
