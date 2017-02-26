@@ -1,14 +1,14 @@
 package bufmgr;
 
 import java.util.HashMap; //TODO: Remove and implement
-
+import java.util.LinkedList;
+import java.io.IOException;
 //import diskmgr.DiskMgr;
 import diskmgr.*;
-import global.Page;
-import global.PageId;
+import global.*;
 import chainexception.ChainException;
 public class BufMgr {
-
+	//TODO: change to private
 	public Page[] frames;
 	public HashMap<PageId, Integer> pageFrame;
 	public String policy;
@@ -16,6 +16,7 @@ public class BufMgr {
 	public int pinnedPages;
 	public DiskMgr disk;
 	public BufferDescription[] descriptions;
+	public LinkedList<Integer> replaceList;
 
 	/**
 	* Create the BufMgr object.
@@ -30,11 +31,22 @@ public class BufMgr {
 	public BufMgr(int numbufs, int lookAheadSize, String replacementPolicy) {
 		frames = new Page[numbufs];
 		disk = new DiskMgr();
+		replaceList = new LinkedList<Integer>();
 		descriptions = new BufferDescription[numbufs];
 		policy = "MRU";
 		pageFrame = new HashMap<PageId, Integer>();
 		pinnedPages = 0;
 		numFilled = 0;
+
+		for (int i = 0; i < numbufs; i++) {
+			descriptions[i] = new BufferDescription();
+		}
+		for (int i = 0; i < numbufs; i++) {
+			replaceList.addLast(i);
+		}
+		for (int i = 0; i < numbufs; i++) {
+			frames[i] = new Page();
+		}
 	}
 
 	/**
@@ -55,15 +67,33 @@ public class BufMgr {
 	* @param page the pointer point to the page.
 	* @param emptyPage true (empty page); false (non-empty page)
 	*/
-	public void pinPage(PageId pageno, Page page, boolean emptyPage)  throws ChainException {
-		if (emptyPage)
-			return;
+	public void pinPage(PageId pageno, Page page, boolean emptyPage)  throws ChainException, IOException {
+		//System.out.println("pinPage2");
 		Integer frame = pageFrame.get(pageno);
 		if (frame != null) {
-			//if (descriptions[frame].pinCount == 0)
-				//remove from candidates
+			if (descriptions[frame].pinCount == 0)
+				replaceList.remove(frame);
 			descriptions[frame].pinCount++;
 			page.setpage(frames[frame].getpage());
+		}
+		else {
+			if (replaceList.size() - 1 == 0) {
+				throw new BufferPoolExceededException(new Exception(), "Buffer Full");
+			}
+
+			frame = replaceList.pollFirst();
+			//System.out.printf("Page %d, Frame %d\n", pageno.pid, frame);
+			PageId oldPageId = new PageId(descriptions[frame].pageNumber);
+			if (descriptions[frame].isDirty) {
+				Minibase.DiskManager.write_page(oldPageId, frames[frame]);
+			}
+			pageFrame.remove(oldPageId);
+			Minibase.DiskManager.read_page(pageno, page);
+			pageFrame.put(new PageId(pageno.pid), frame);
+			//System.out.println(pageFrame);
+			frames[frame].setpage(page.getpage());
+			descriptions[frame] = new BufferDescription(pageno.pid, 1, false);
+			//System.out.println("End of pinPage");
 		}
 	}
 
@@ -84,7 +114,27 @@ public class BufMgr {
 	* @param dirty the dirty bit of the frame
 	*/
 	public void unpinPage(PageId pageno, boolean dirty) throws ChainException {
+		//System.out.printf("Unpin page: %d", pageno.pid);
+		Integer pageNumber = pageFrame.get(pageno);
+		if (pageNumber == null) {
+			throw new HashEntryNotFoundException(new Exception(), "HashEntryNotFoundException");
+		}
+		else {
+			if (descriptions[pageNumber].pinCount <= 0) {
+				throw new ChainException(new Exception(), "PageUnpinnedException");
+			}
+			else {
+				descriptions[pageNumber].isDirty = dirty;
+				descriptions[pageNumber].pinCount--;
 
+				if (descriptions[pageNumber].pinCount == 0) {
+					if (!replaceList.contains(pageNumber)) {
+						replaceList.addFirst(pageNumber);
+					}
+				}
+			}
+
+		}
 	}
 	/**
 	* Allocate new pages.
@@ -101,9 +151,45 @@ public class BufMgr {
 	* @return the first page id of the new pages.__ null, if error.
 	*/
 	public PageId newPage(Page firstPage, int howmany) {
-		return new PageId();
+		PageId newPid = new PageId();
+		try {
+			Minibase.DiskManager.allocate_page(newPid, howmany);
+			pinPage(newPid, firstPage, false);
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (ChainException e) {
+			e.printStackTrace();
+		}
+		return newPid;
 	}
-	public void freePage(PageId globalPageId) throws ChainException {}
+	/**
+	* This method should be called to delete a page that is on disk.
+	* This routine must call the method in diskmgr package to
+	* deallocate the page.
+	*
+	* @param globalPageId the page number in the data base.
+	*/
+	public void freePage(PageId globalPageId) throws ChainException {
+		Integer frame = pageFrame.get(globalPageId);
+		if (frame != null) {
+			if (descriptions[frame].pinCount > 1) {
+				throw new PagePinnedException(new Exception(), "Page still pinned");
+			}
+			else {
+				if (descriptions[frame].pinCount == 1)
+					unpinPage(globalPageId, false);
+				try {
+					Minibase.DiskManager.deallocate_page(globalPageId);
+				} catch (ChainException e) {
+					e.printStackTrace();
+				}
+
+				descriptions[frame] = new BufferDescription();
+				pageFrame.remove(globalPageId);
+				replaceList.remove(frame);
+			}
+		}
+	}
 	/**
 	* Used to flush a particular page of the buffer pool to disk.
 	* This method calls the write_page method of the diskmgr package.
@@ -113,7 +199,7 @@ public class BufMgr {
 	public void flushPage(PageId pageid) {
 		int f = pageFrame.get(pageid);
 		try {
-			disk.write_page(pageid, frames[f]);
+			Minibase.DiskManager.write_page(pageid, frames[f]);
 		} catch (Exception e) {
 			System.err.println(e);
 		}
@@ -135,9 +221,21 @@ public class BufMgr {
 	* Returns the total number of buffer frames.
 	*/
 	public int getNumBuffers() {
-		return 0;
+		return frames.length;
 	}
 	public int getNumUnpinned() {
-		return 0;
+		int count = 0;
+		for (int i = 0; i < descriptions.length; i++) {
+			if (descriptions[i].pinCount == 0)
+				count++;
+		}
+		return count;
+	}
+	private boolean isFull() {
+		for (int i = 0; i < descriptions.length; i++) {
+			if (descriptions[i].pinCount == 0)
+				return false;
+		}
+		return true;
 	}
 }
