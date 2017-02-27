@@ -305,7 +305,7 @@ class HFDriver extends TestDriver implements GlobalConst
 			boolean done = false;
 
 			while (!done) { 
-				System.out.println(rid +" This spot");
+				//System.out.println(rid +" This spot");
 				try {
 					tuple = scan.getNext(rid);
 					if (tuple == null) {
@@ -313,11 +313,13 @@ class HFDriver extends TestDriver implements GlobalConst
 					}
 				}
 				catch (Exception e) {
+					System.out.println("C: " + (status==OK)) ;
 					status = FAIL;
 					e.printStackTrace();
 				}
 
 				if (!done && status == OK) {
+					//System.out.println("A: " + (status==OK)) ;
 					boolean odd = true;
 					if ( i % 2 == 1 ) odd = true;
 					if ( i % 2 == 0 ) odd = false;
@@ -326,6 +328,7 @@ class HFDriver extends TestDriver implements GlobalConst
 							status = f.deleteRecord( rid );
 						}
 						catch (Exception e) {
+							//System.out.println("B: " + (status==OK)) ;
 							status = FAIL;
 							System.err.println ("*** Error deleting record " + i + "\n");
 							e.printStackTrace();
@@ -335,8 +338,8 @@ class HFDriver extends TestDriver implements GlobalConst
 				}
 				++i;
 			}
+			//System.out.println("HERE: " + (status==FAIL)) ;
 		}
-
 		try {
 			scan.close();
 		} catch (ChainException e1) {
@@ -344,7 +347,6 @@ class HFDriver extends TestDriver implements GlobalConst
 			e1.printStackTrace();
 		}	//  destruct scan!!!!!!!!!!!!!!!
 		scan = null;
-
 		if ( status == OK && Minibase.BufferManager.getNumUnpinned() 
 				!= Minibase.BufferManager.getNumBuffers() ) {
 
@@ -355,7 +357,6 @@ class HFDriver extends TestDriver implements GlobalConst
 			System.err.println ("*** Deletion left a page pinned\n");
 			status = FAIL;
 		}
-
 		if ( status == OK ) {
 			System.out.println ("  - Scan the remaining records\n");
 			try {
@@ -480,6 +481,7 @@ class HFDriver extends TestDriver implements GlobalConst
 					Tuple newTuple = null; 
 					try {
 						newTuple = new Tuple (rec.toByteArray(),0,rec.getRecLength()); 
+						//System.out.println("FOR US: " + rec.fval + " | " + rid);
 					}
 					catch (Exception e) {
 						status = FAIL;
@@ -555,6 +557,7 @@ class HFDriver extends TestDriver implements GlobalConst
 				if (!done && status == OK) {
 					try {
 						rec = new DummyRecord(tuple);
+						//System.out.println("FOR ME: " + rec.ival + " | " +rid);
 					}
 					catch (Exception e) {
 						System.err.println (""+e);
@@ -573,6 +576,7 @@ class HFDriver extends TestDriver implements GlobalConst
 
 					try {
 						rec2 = new DummyRecord(tuple2);
+						//System.out.println("FOR YOU: " + rec2.ival);
 					}
 					catch (Exception e) {
 						System.err.println (""+e);
@@ -919,4 +923,3 @@ public class HFTest {
 		Runtime.getRuntime().exit(0);
 	}
 }
-
