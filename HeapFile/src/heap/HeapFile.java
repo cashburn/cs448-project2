@@ -1,4 +1,4 @@
-package heap;
+package heap; 
 
 import global.* ;
 import chainexception.ChainException;
@@ -97,11 +97,11 @@ public class HeapFile{
 		}
 	}
 
-	public RID insertRecord(byte[] record)throws ChainException{
+	public RID insertRecord(byte[] record)throws ChainException, SpaceNotAvailableException{
 		if(record.length + HFPage.HEADER_SIZE > 1024){
-			throw new SpaceNotAvailableException(new Exception(), "Space Not Available");
+			throw new SpaceNotAvailableException("E");
 		}
-		int l = record.length;
+		int l = record.length; 
 
 		//search for space in an existing page
 		for (int i = 0 ;i < pageList.size(); i++){
