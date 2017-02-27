@@ -6,32 +6,27 @@ import java.util.*;
 
 public class HeapFile{
 	protected ArrayList<PageId> pageList;
-	protected String heapFileName;
 	protected ArrayList<Integer> pidList;
 	protected int count;
 	protected HFPage curr;
-	PageId headId;
-	protected Page p;
 	protected HFPage first;
 
 
 	public HeapFile(String name){
-		p = new Page();
+		Page p = new Page();
 		pageList = new ArrayList<PageId>();
 		pidList = new ArrayList<Integer>();
 
 		if(name != null){
-			heapFileName = name;
-
 			//check to see if exists
-			PageId page = headId = Minibase.DiskManager.get_file_entry(heapFileName);
+			PageId page = Minibase.DiskManager.get_file_entry(name);
 			//System.out.println("Page --- " + page);
 
 			if(page == null){
 				page = Minibase.BufferManager.newPage(p, 1);
 
 				//write to disk
-				Minibase.DiskManager.add_file_entry(heapFileName, page);
+				Minibase.DiskManager.add_file_entry(name, page);
 
 				//need to unpin the page for now
 				Minibase.BufferManager.unpinPage(page, true);
@@ -88,7 +83,7 @@ public class HeapFile{
 			//System.out.println("Num files - " + pageList.size());
 		} else {
 			//passed name is null temp file
-			PageId page = global.Minibase.DiskManager.get_file_entry(heapFileName);
+			PageId page = global.Minibase.DiskManager.get_file_entry(name);
 			curr = new HFPage(p);
 			curr.setCurPage(page);
 			pageList.add(page);
@@ -145,7 +140,7 @@ public class HeapFile{
 	}
 
 	/*Todo - not sure about this one*/
-	public Tuple getRecord(RID rid){
+	public Tuple getRecord(RID rid)throws ChainException{
 		// PageId n;
 		// RID i = first.firstRecord();
 		// System.out.println("First record - " + pageList.size());
@@ -170,6 +165,7 @@ public class HeapFile{
 		// }
 		// byte[] ret = t.selectRecord(i);
 		// Tuple tup = new Tuple(ret, 0, ret.length);
+		try{
 		PageId n = rid.pageno;
 		Page x = new Page();
 		HFPage t = new HFPage();
@@ -182,6 +178,9 @@ public class HeapFile{
 		byte[] ret = t.selectRecord(i);
 		Tuple tup = new Tuple(ret, 0, ret.length);
 		return tup;
+		} catch (Exception e) {
+			throw new InvalidUpdateException();
+		}
 	}
 
 	public boolean updateRecord(RID rid, Tuple newRecord) throws ChainException{
@@ -198,7 +197,8 @@ public class HeapFile{
 
 	}
 
-	public boolean deleteRecord(RID rid){
+	public boolean deleteRecord(RID rid) throws ChainException{
+		try{
 		PageId page = rid.pageno;
 		HFPage p = new HFPage();
 		Minibase.BufferManager.pinPage(page, p, false);
@@ -206,6 +206,9 @@ public class HeapFile{
 		Minibase.BufferManager.unpinPage(page, false);
 		count--;
 		return true;
+		} catch (Exception e) {
+			throw new InvalidUpdateException();
+		}
 	}
 
 	public int getRecCnt(){return count;}

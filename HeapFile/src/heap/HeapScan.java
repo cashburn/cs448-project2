@@ -3,13 +3,11 @@ import java.util.*;
 import global.* ;
 import chainexception.ChainException;
 public class HeapScan{
-    HeapFile heapfile;
     HFPage curr;
     RID ourRid;
     Iterator<PageId> pageList;
 
     protected HeapScan(HeapFile hf){
-        heapfile = hf;
         //System.out.println("SIZE => " + hf.pageList.size());
         pageList = hf.pageList.iterator();
         Page p = new Page();
@@ -19,19 +17,13 @@ public class HeapScan{
     }
 
     protected void finalize() throws Throwable{
-        //heapfile = null;
-        pageList = null;
-        ourRid = null;
-        curr = null;
+        close();
     }
 
     public void close()throws ChainException{
-        try{
-            finalize();
-        } catch (Throwable e) {
-            System.out.println("it me");
-        }
-        heapfile = null;
+        pageList = null;
+        ourRid = null;
+        curr = null;
     }
 
     public boolean hasNext(){
@@ -40,10 +32,17 @@ public class HeapScan{
 
     public Tuple getNext(RID rid){
         // System.out.println("IT MEEE +++++ => " + heapfile);
+        // try{
+        //     Tuple re = new Tuple(curr.selectRecord(ourRid), 0, curr.selectRecord(ourRid).length);
+        //     return re;
+        // } catch (Exception e) {
+
+        // }
         if(ourRid == null){
-            if(pageList.hasNext()){
+            PageId p = curr.getCurPage();
+            if(this.hasNext()){
                 //System.out.println("HAS NEXT");
-                Minibase.BufferManager.unpinPage(curr.getCurPage(), false);
+                Minibase.BufferManager.unpinPage(p, false);
                 PageId x = pageList.next();
                 // System.out.println(curr + " SIZE");
                 Minibase.BufferManager.pinPage(x, curr, false);
@@ -53,7 +52,7 @@ public class HeapScan{
                     Minibase.BufferManager.unpinPage(x, false);
                 }
             } else {
-                Minibase.BufferManager.unpinPage(curr.getCurPage(), false);
+                Minibase.BufferManager.unpinPage(p, false);
             }
         } 
         if(ourRid != null)
