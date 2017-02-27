@@ -146,7 +146,6 @@ class BMDriver extends TestDriver implements GlobalConst {
 
 		try {
 			firstPid = Minibase.BufferManager.newPage( pg, numPages );
-			System.err.println(Minibase.BufferManager.pageFrame);
 		}
 		catch (Exception e) {
 			System.err.print("*** Could not allocate " + numPages);
@@ -222,15 +221,7 @@ class BMDriver extends TestDriver implements GlobalConst {
 		pid.pid = pid.pid + 1) {
 
 			try {
-				if (pid.pid == firstPid.pid) {
-					System.err.println("Before pin 1");
-					System.err.println(Minibase.BufferManager.replaceList);
-				}
 				Minibase.BufferManager.pinPage( pid, pg, /*emptyPage:*/ false );
-				if (pid.pid == firstPid.pid) {
-					System.err.println("After pin 1");
-					System.err.println(Minibase.BufferManager.replaceList);
-				}
 			}
 			catch (Exception e) {
 				status = FAIL;
