@@ -97,9 +97,9 @@ public class HeapFile{
 		}
 	}
 
-	public RID insertRecord(byte[] record)throws ChainException{
+	public RID insertRecord(byte[] record)throws ChainException, SpaceNotAvailableException{
 		if(record.length + HFPage.HEADER_SIZE > 1024){
-			throw new SpaceNotAvailableException();
+			throw new SpaceNotAvailableException("E");
 		}
 		int l = record.length; 
 
