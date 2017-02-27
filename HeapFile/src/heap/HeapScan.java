@@ -39,9 +39,10 @@ public class HeapScan{
     }
 
     public Tuple getNext(RID rid){
+        // System.out.println("IT MEEE +++++ => " + heapfile);
         if(ourRid == null){
             if(pageList.hasNext()){
-                System.out.println("HAS NEXT");
+                //System.out.println("HAS NEXT");
                 Minibase.BufferManager.unpinPage(curr.getCurPage(), false);
                 PageId x = pageList.next();
                 // System.out.println(curr + " SIZE");

@@ -12,6 +12,7 @@ public class HeapFile{
 	protected HFPage curr;
 	PageId headId;
 	protected Page p;
+	protected HFPage first;
 
 
 	public HeapFile(String name){
@@ -24,6 +25,7 @@ public class HeapFile{
 
 			//check to see if exists
 			PageId page = headId = Minibase.DiskManager.get_file_entry(heapFileName);
+			//System.out.println("Page --- " + page);
 
 			if(page == null){
 				page = Minibase.BufferManager.newPage(p, 1);
@@ -36,8 +38,9 @@ public class HeapFile{
 				pageList.add(page);
 				pidList.add(page.pid);
 				Minibase.BufferManager.pinPage(page, p, false);
-				curr = new HFPage(p);
+				first = curr = new HFPage(p);
 				curr.setCurPage(page);
+				first.setCurPage(page);
 				Minibase.BufferManager.unpinPage(page, true);
 				count = 0;
 
@@ -48,9 +51,10 @@ public class HeapFile{
 			//pin it
 			Minibase.BufferManager.pinPage(page, p, false);
 
-
-			curr = new HFPage(p);
+			first = curr = new HFPage(p);
+			//System.out.println("GET DATA -> " + p);
 			curr.setData(p.getData());
+			first.setData(p.getData());
 			pageList.add(page);
 			pidList.add(page.pid);
 			Minibase.BufferManager.unpinPage(page, false);
@@ -62,6 +66,8 @@ public class HeapFile{
 
 
 			PageId cPage = curr.getNextPage();
+			//System.out.println("ALSO HERE: "+ curr.getCurPage().pid);
+			//System.out.println("HERE ======= " + cPage.pid);
 			while(cPage.pid > 0){
 				HFPage y = new HFPage();
 				Minibase.BufferManager.pinPage(cPage, y, false);
@@ -69,6 +75,7 @@ public class HeapFile{
 				pidList.add(cPage.pid);
 
 				x = y.firstRecord();
+				// System.out.println("YOO -- " + x);
 				while(x != null){
 					count++;
 					x = y.nextRecord(x);
@@ -76,7 +83,9 @@ public class HeapFile{
 
 				Minibase.BufferManager.unpinPage(cPage, false);
 				cPage = y.getNextPage();
+				//System.out.println("page - " + cPage);
 			}
+			//System.out.println("Num files - " + pageList.size());
 		} else {
 			//passed name is null temp file
 			PageId page = global.Minibase.DiskManager.get_file_entry(heapFileName);
@@ -89,6 +98,9 @@ public class HeapFile{
 	}
 
 	public RID insertRecord(byte[] record)throws ChainException{
+		if(record.length + HFPage.HEADER_SIZE > 1024){
+			throw new SpaceNotAvailableException();
+		}
 		int l = record.length; 
 
 		//search for space in an existing page
@@ -118,8 +130,9 @@ public class HeapFile{
 		hf.setCurPage(page);
 
 		RID ret = hf.insertRecord(record);
-		hf.setNextPage(page);
+		//hf.setNextPage(page);
 		hf.setPrevPage(curr.getCurPage());
+		curr.setNextPage(page);
 		curr = hf;
 
 		pageList.add(page);
@@ -132,26 +145,71 @@ public class HeapFile{
 	}
 
 	/*Todo - not sure about this one*/
-	public Tuple getRecord(RID rid){return null;}
-
-	public boolean updateRecord(RID rid, Tuple newRecord) throws ChainException{
-		PageId page = rid.pageno;
-		Page p = new Page();
-
-		Minibase.BufferManager.pinPage(page, p, false);
-		HFPage hf = new HFPage(p);
-		Minibase.BufferManager.unpinPage(page, false);
-		return true;
+	public Tuple getRecord(RID rid){
+		// PageId n;
+		// RID i = first.firstRecord();
+		// System.out.println("First record - " + pageList.size());
+		// HFPage t = first;
+		// while(true){
+		// 	if(i == null){
+		// 		if((n = t.getNextPage()) == null){
+		// 			break;
+		// 		} else {
+		// 			if(t != first){
+		// 				Minibase.BufferManager.unpinPage(n, false);
+		// 			}
+		// 			t = new HFPage();
+		// 			Minibase.BufferManager.pinPage(n, t, false);
+		// 			i = t.firstRecord();
+		// 		}
+		// 	}
+		// 	if(i.equals(rid)){
+		// 		break;
+		// 	}
+		// 	i = t.nextRecord(i);
+		// }
+		// byte[] ret = t.selectRecord(i);
+		// Tuple tup = new Tuple(ret, 0, ret.length);
+		PageId n = rid.pageno;
+		Page x = new Page();
+		HFPage t = new HFPage();
+		Minibase.BufferManager.pinPage(n,t,false);
+		RID i = t.firstRecord();
+		while(!i.equals(rid)){
+			i = t.nextRecord(i);
+		}
+		Minibase.BufferManager.unpinPage(n, false);
+		byte[] ret = t.selectRecord(i);
+		Tuple tup = new Tuple(ret, 0, ret.length);
+		return tup;
 	}
 
-	public boolean deleteRecord(RID rid){return false;}
+	public boolean updateRecord(RID rid, Tuple newRecord) throws ChainException{
+		try{
+			PageId page = rid.pageno;
+			HFPage p = new HFPage();
+			Minibase.BufferManager.pinPage(page, p, false);
+			p.updateRecord(rid, newRecord);
+			Minibase.BufferManager.unpinPage(page, false);
+		} catch (Exception e){
+			throw new InvalidUpdateException();
+		}
+		return true;
+
+	}
+
+	public boolean deleteRecord(RID rid){
+		PageId page = rid.pageno;
+		HFPage p = new HFPage();
+		Minibase.BufferManager.pinPage(page, p, false);
+		p.deleteRecord(rid);
+		Minibase.BufferManager.unpinPage(page, false);
+		count--;
+		return true;
+	}
 
 	public int getRecCnt(){return count;}
 
 	/*Todo - not sure about this one either */
 	public HeapScan openScan(){return new HeapScan(this);}
-
-	public Iterator<PageId> iterator(){
-		return	pageList.iterator();
-	}
 }
