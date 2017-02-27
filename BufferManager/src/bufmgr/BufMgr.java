@@ -1,14 +1,15 @@
 package bufmgr;
 
 import java.util.HashMap; //TODO: Remove and implement
+
 import java.util.LinkedList;
 import java.io.IOException;
-//import diskmgr.DiskMgr;
 import diskmgr.*;
 import global.*;
 import chainexception.ChainException;
 public class BufMgr {
 	//TODO: change to private
+
 	public Page[] frames;
 	public HashMap<PageId, Integer> pageFrame;
 	public String policy;
@@ -31,6 +32,7 @@ public class BufMgr {
 	public BufMgr(int numbufs, int lookAheadSize, String replacementPolicy) {
 		frames = new Page[numbufs];
 		disk = new DiskMgr();
+
 		replaceList = new LinkedList<Integer>();
 		descriptions = new BufferDescription[numbufs];
 		policy = "MRU";
@@ -199,6 +201,7 @@ public class BufMgr {
 	public void flushPage(PageId pageid) {
 		int f = pageFrame.get(pageid);
 		try {
+
 			Minibase.DiskManager.write_page(pageid, frames[f]);
 		} catch (Exception e) {
 			System.err.println(e);
