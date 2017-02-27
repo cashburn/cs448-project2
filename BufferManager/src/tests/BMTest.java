@@ -246,7 +246,6 @@ class BMDriver extends TestDriver implements GlobalConst {
 						status = FAIL;
 						System.err.print ("*** Read wrong data back from page "
 								+ pid.pid + "\n");
-						System.err.println(Minibase.BufferManager.pageFrame);
 					}
 				}
 

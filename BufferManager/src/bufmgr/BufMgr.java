@@ -1,23 +1,19 @@
 package bufmgr;
 
-import java.util.HashMap; //TODO: Remove and implement
-
 import java.util.LinkedList;
 import java.io.IOException;
 import diskmgr.*;
 import global.*;
 import chainexception.ChainException;
 public class BufMgr {
-	//TODO: change to private
 
-	public Page[] frames;
-	public HashMap<PageId, Integer> pageFrame;
-	public String policy;
-	public int numFilled;
-	public int pinnedPages;
-	public DiskMgr disk;
-	public BufferDescription[] descriptions;
-	public LinkedList<Integer> replaceList;
+	private Page[] frames;
+	private PageHashMap pageFrame;
+	private String policy;
+	private int numFilled;
+	private int pinnedPages;
+	private BufferDescription[] descriptions;
+	private LinkedList<Integer> replaceList;
 
 	/**
 	* Create the BufMgr object.
@@ -31,12 +27,11 @@ public class BufMgr {
 	*/
 	public BufMgr(int numbufs, int lookAheadSize, String replacementPolicy) {
 		frames = new Page[numbufs];
-		disk = new DiskMgr();
 
 		replaceList = new LinkedList<Integer>();
 		descriptions = new BufferDescription[numbufs];
 		policy = "MRU";
-		pageFrame = new HashMap<PageId, Integer>();
+		pageFrame = new PageHashMap(numbufs);
 		pinnedPages = 0;
 		numFilled = 0;
 
