@@ -305,6 +305,7 @@ class HFDriver extends TestDriver implements GlobalConst
 			boolean done = false;
 
 			while (!done) { 
+				System.out.println(rid +" This spot");
 				try {
 					tuple = scan.getNext(rid);
 					if (tuple == null) {

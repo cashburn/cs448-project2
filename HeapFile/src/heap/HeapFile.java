@@ -5,15 +5,17 @@ import chainexception.ChainException;
 import java.util.*;
 
 public class HeapFile{
-	private ArrayList<PageId> pageList;
-	private String heapFileName;
-	private ArrayList<Integer> pidList;
-	private int count;
-	private HFPage curr;
+	protected ArrayList<PageId> pageList;
+	protected String heapFileName;
+	protected ArrayList<Integer> pidList;
+	protected int count;
+	protected HFPage curr;
+	PageId headId;
+	protected Page p;
 
 
 	public HeapFile(String name){
-		Page p = new Page();
+		p = new Page();
 		pageList = new ArrayList<PageId>();
 		pidList = new ArrayList<Integer>();
 
@@ -21,22 +23,22 @@ public class HeapFile{
 			heapFileName = name;
 
 			//check to see if exists
-			PageId page = global.Minibase.DiskManager.get_file_entry(heapFileName);
+			PageId page = headId = Minibase.DiskManager.get_file_entry(heapFileName);
 
 			if(page == null){
-				page = global.Minibase.BufferManager.newPage(p, 1);
+				page = Minibase.BufferManager.newPage(p, 1);
 
 				//write to disk
-				global.Minibase.DiskManager.add_file_entry(heapFileName, page);
+				Minibase.DiskManager.add_file_entry(heapFileName, page);
 
 				//need to unpin the page for now
-				global.Minibase.BufferManager.unpinPage(page, true);
+				Minibase.BufferManager.unpinPage(page, true);
 				pageList.add(page);
 				pidList.add(page.pid);
-				global.Minibase.BufferManager.pinPage(page, p, false);
+				Minibase.BufferManager.pinPage(page, p, false);
 				curr = new HFPage(p);
 				curr.setCurPage(page);
-				global.Minibase.BufferManager.unpinPage(page, true);
+				Minibase.BufferManager.unpinPage(page, true);
 				count = 0;
 
 				return;
@@ -44,14 +46,14 @@ public class HeapFile{
 
 			//Page already exists
 			//pin it
-			global.Minibase.BufferManager.pinPage(page, p, false);
+			Minibase.BufferManager.pinPage(page, p, false);
 
 
 			curr = new HFPage(p);
 			curr.setData(p.getData());
 			pageList.add(page);
 			pidList.add(page.pid);
-			global.Minibase.BufferManager.unpinPage(page, false);
+			Minibase.BufferManager.unpinPage(page, false);
 			RID x = curr.firstRecord();
 			while(x != null){
 				count++;
@@ -62,7 +64,7 @@ public class HeapFile{
 			PageId cPage = curr.getNextPage();
 			while(cPage.pid > 0){
 				HFPage y = new HFPage();
-				global.Minibase.BufferManager.pinPage(cPage, y, false);
+				Minibase.BufferManager.pinPage(cPage, y, false);
 				pageList.add(cPage);
 				pidList.add(cPage.pid);
 
@@ -72,7 +74,7 @@ public class HeapFile{
 					x = y.nextRecord(x);
 				}
 
-				global.Minibase.BufferManager.unpinPage(cPage, false);
+				Minibase.BufferManager.unpinPage(cPage, false);
 				cPage = y.getNextPage();
 			}
 		} else {
@@ -82,7 +84,7 @@ public class HeapFile{
 			curr.setCurPage(page);
 			pageList.add(page);
 			pidList.add(page.pid);
-			global.Minibase.BufferManager.unpinPage(page, true);
+			Minibase.BufferManager.unpinPage(page, true);
 		}
 	}
 
@@ -94,22 +96,22 @@ public class HeapFile{
 			PageId page = pageList.get(i);
 			Page p = new Page();
 
-			global.Minibase.BufferManager.pinPage(page, p, false);
+			Minibase.BufferManager.pinPage(page, p, false);
 			HFPage hf = new HFPage(p);
 			hf.setCurPage(page);
 			hf.setData(p.getData());
 			if(hf.getFreeSpace() > l){
 				RID ret = hf.insertRecord(record);
-				global.Minibase.BufferManager.unpinPage(page, true);
+				Minibase.BufferManager.unpinPage(page, true);
 				count++;
 				return ret;
 			}
-			global.Minibase.BufferManager.unpinPage(page, false);
+			Minibase.BufferManager.unpinPage(page, false);
 		}
 
 		//No existing page can house our record so make a new one
 		Page p = new Page();
-		PageId page = global.Minibase.BufferManager.newPage(p, 1);
+		PageId page = Minibase.BufferManager.newPage(p, 1);
 
 		HFPage hf = new HFPage(p);
 		hf.initDefaults();
@@ -123,7 +125,7 @@ public class HeapFile{
 		pageList.add(page);
 		pidList.add(page.pid);
 
-		global.Minibase.BufferManager.unpinPage(page, true);
+		Minibase.BufferManager.unpinPage(page, true);
 
 		count++;
 		return ret;
@@ -136,9 +138,9 @@ public class HeapFile{
 		PageId page = rid.pageno;
 		Page p = new Page();
 
-		global.Minibase.BufferManager.pinPage(page, p, false);
+		Minibase.BufferManager.pinPage(page, p, false);
 		HFPage hf = new HFPage(p);
-		global.Minibase.BufferManager.unpinPage(page, false);
+		Minibase.BufferManager.unpinPage(page, false);
 		return true;
 	}
 
@@ -149,7 +151,7 @@ public class HeapFile{
 	/*Todo - not sure about this one either */
 	public HeapScan openScan(){return new HeapScan(this);}
 
-	// public Iterator<PageId> iterator() {
-	// 	return pageList.iterator();
-	// }
+	public Iterator<PageId> iterator(){
+		return	pageList.iterator();
+	}
 }

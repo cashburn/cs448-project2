@@ -5,7 +5,7 @@ import chainexception.ChainException;
 public class Tuple{
 	
 	/*FIXME this shouldn't be an arbitrary number*/
-	public static final int max = 1000000;
+	public static final int max = 1024;
 
 	private byte[] tupleArray;
 	private int tupleLength;
